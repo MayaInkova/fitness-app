@@ -1,73 +1,101 @@
-import React from 'react';
+import React from "react";
+import { Dumbbell } from "lucide-react";
+import { motion } from "framer-motion";
 
-// trainingPlan пропът вече приема целия DailyTrainingPlanDTO обект
+/* ──────────────────────────────────────────────────────────── */
+/* Константи                                                   */
+/* ──────────────────────────────────────────────────────────── */
+
+const DAYS_ORDER = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"];
+const DAYS_BG = {
+  MONDAY:"Понеделник",TUESDAY:"Вторник",WEDNESDAY:"Сряда",
+  THURSDAY:"Четвъртък",FRIDAY:"Петък",SATURDAY:"Събота",SUNDAY:"Неделя",
+};
+const DAY_COL = {
+  MONDAY:"bg-pink-500",TUESDAY:"bg-amber-400",WEDNESDAY:"bg-emerald-500",
+  THURSDAY:"bg-sky-500",FRIDAY:"bg-violet-500",SATURDAY:"bg-lime-500",SUNDAY:"bg-rose-500",
+};
+const DIFF_COL = { BEGINNER:"text-emerald-600",INTERMEDIATE:"text-yellow-600",ADVANCED:"text-rose-600" };
+const EMOJI = { Планк:"🧍‍♀️","Глутеус мост":"🍑",Клякания:"🦵","Лицеви опори":"🙌",Коремни:"🤸" };
+
+/* ──────────────────────────────────────────────────────────── */
+/* Компонент                                                   */
+/* ──────────────────────────────────────────────────────────── */
 export default function TrainingPlanSection({ trainingPlan }) {
-  // Коригирано: Достъпваме директно пропса, тъй като той вече е DailyTrainingPlanDTO
-  const dailyTrainingPlan = trainingPlan;
-
-  // Проверяваме дали има данни за тренировъчен план или сесии
-  if (!dailyTrainingPlan || !dailyTrainingPlan.trainingSessions || dailyTrainingPlan.trainingSessions.length === 0) {
+  /* guard */
+  if (!trainingPlan?.trainingSessions?.length)
     return (
-      <section className="mt-8 bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">💪 Тренировъчен план</h2>
-        <p className="text-gray-500 italic">Няма генериран тренировъчен план или тренировъчни сесии.</p>
+      <section className="mt-8 bg-white p-6 rounded-xl shadow-md text-center">
+        <h2 className="text-2xl font-bold text-gray-800">💪 Тренировъчен план</h2>
+        <p className="text-gray-500 italic mt-2">Няма генериран план.</p>
       </section>
     );
-  }
 
   return (
-    <section className="mt-8 bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">🏋️ Тренировъчен план</h2>
+    <section className="mt-8 bg-white rounded-2xl shadow-lg p-6">
+      {/* Заглавие + резюме */}
+      <h2 className="text-2xl font-bold mb-1 flex items-center gap-2">
+        <Dumbbell className="text-green-600" /> Тренировъчен план
+      </h2>
+      <p className="text-gray-600 mb-6">
+        Потребителят е избрал да тренира <strong>{trainingPlan.trainingDaysPerWeek || 5}</strong> дни седмично,
+        отделяйки по <strong>{trainingPlan.trainingDurationMinutes || 30} минути</strong> на ден.
+      </p>
 
-      {/* Обща информация за плана - сега достъпваме от dailyTrainingPlan */}
-      <div className="mb-6 border-b pb-4">
-        <p className="text-lg text-gray-700">
-          {/* Достъпваме от dailyTrainingPlan */}
-          <strong>Дни в седмицата:</strong> {dailyTrainingPlan.trainingDaysPerWeek || 'Неуточнени'}
-        </p>
-        <p className="text-lg text-gray-700">
-          {/* Достъпваме от dailyTrainingPlan */}
-          <strong>Средна продължителност:</strong> {dailyTrainingPlan.trainingDurationMinutes || 'Неуточнени'} минути на сесия
-        </p>
-        <p className="text-sm text-gray-500 mt-2">
-          План, генериран на: {dailyTrainingPlan.dateGenerated // Достъпваме от dailyTrainingPlan
-            ? new Date(dailyTrainingPlan.dateGenerated).toLocaleDateString('bg-BG')
-            : 'Неизвестна дата'}
-        </p>
+      {/* Сесии по дни */}
+      <div className="grid gap-6">
+        {trainingPlan.trainingSessions
+          .slice()
+          .sort((a,b)=>DAYS_ORDER.indexOf(a.dayOfWeek)-DAYS_ORDER.indexOf(b.dayOfWeek))
+          .map((s)=>(
+            <motion.article
+              key={s.id}
+              whileHover={{ y:-4 }}
+              className="relative p-5 rounded-xl bg-gray-50 hover:bg-white shadow transition"
+            >
+              <span className={`absolute inset-y-0 left-0 w-1.5 rounded-l-xl ${DAY_COL[s.dayOfWeek]||"bg-gray-400"}`} />
+              <h3 className="text-lg sm:text-xl font-semibold text-blue-700 mb-3 flex items-center gap-2">
+                🗓️ {DAYS_BG[s.dayOfWeek]}{" "}
+                <span className="text-gray-500 text-base ml-1">({s.durationMinutes} мин.)</span>
+              </h3>
+
+              {s.exercises?.length ? (
+                <ul className="space-y-2">
+                  {s.exercises.map((ex)=>(
+                    <li key={ex.id} className="flex gap-3 items-start leading-relaxed">
+                      <span className="w-6 text-center select-none text-xl">{EMOJI[ex.name]||"🏋️"}</span>
+                      <span>
+                        <span className="font-medium">{ex.name}</span>{" "}
+                        – {ex.sets}×{ex.reps}
+                        {ex.durationMinutes ? ` • ${ex.durationMinutes} мин.` : ""}
+                        {ex.difficultyLevel && (
+                          <span className={`ml-2 text-sm font-medium ${DIFF_COL[ex.difficultyLevel]||"text-gray-500"}`}>
+                            [{typeof ex.difficultyLevel==="string"
+                                ? ex.difficultyLevel
+                                : ex.difficultyLevel.displayName}]
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="italic text-gray-500">Няма упражнения за този ден.</p>
+              )}
+            </motion.article>
+          ))}
       </div>
 
-      {/* Итерираме през TrainingSessionDTOs от dailyTrainingPlan */}
-      {dailyTrainingPlan.trainingSessions
-        .sort((a, b) => {
-          // Дефинираме ред за дните от седмицата
-          const daysOrder = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
-          const dayA = a.dayOfWeek ? a.dayOfWeek.toUpperCase() : "";
-          const dayB = b.dayOfWeek ? b.dayOfWeek.toUpperCase() : "";
-          return daysOrder.indexOf(dayA) - daysOrder.indexOf(dayB);
-        })
-        .map((session, sessionIndex) => (
-          <div key={session.id || sessionIndex} className="mb-6 p-4 border rounded-md bg-gray-50 last:mb-0">
-            <h3 className="text-xl font-semibold text-blue-700 mb-3">
-              🗓️ {session.dayOfWeek ? session.dayOfWeek.charAt(0).toUpperCase() + session.dayOfWeek.slice(1).toLowerCase() : 'Неуточнен ден'}
-              <span className="text-gray-600 text-base ml-2">({session.durationMinutes} мин.)</span>
-            </h3>
-            {session.exercises && session.exercises.length > 0 ? (
-              <ul className="list-disc ml-6 space-y-2 text-gray-700">
-                {/* Итерираме през ExerciseDTOs */}
-                {session.exercises.map((exercise, exerciseIndex) => (
-                  <li key={exercise.id || exerciseIndex} className="text-base leading-relaxed">
-                    <strong>{exercise.name}</strong> - {exercise.description} ({exercise.sets} серии по {exercise.reps} повторения)
-                    {exercise.durationMinutes > 0 && ` (${exercise.durationMinutes} мин.)`}
-                    {/* Приемаме, че difficultyLevel може да е директно стойност или обект с displayName */}
-                    {exercise.difficultyLevel && <span className="ml-2 text-sm text-gray-500">[{exercise.difficultyLevel.displayName || exercise.difficultyLevel}]</span>}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500 italic">Няма упражнения за тази сесия.</p>
-            )}
-          </div>
-        ))}
+      {/* Финална информативна секция */}
+      <div className="mt-10 p-6 bg-gray-50 rounded-xl border text-gray-700">
+        <h3 className="text-lg font-semibold mb-2">💡 Защо тренировките са важни?</h3>
+        <p className="text-sm leading-relaxed">
+          Редовната физическа активност подобрява издръжливостта, силата и гъвкавостта,
+          повишава настроението и качеството на съня, а също така намалява риска от хронични
+          заболявания като диабет, хипертония и депресия. Само 30&nbsp;минути движение на ден
+          са достатъчни, за да поддържате здраво тяло и бистър ум.
+        </p>
+      </div>
     </section>
   );
 }
