@@ -11,7 +11,7 @@ import { Link } from "react-router-dom";
 export default function GuestSummary() {
   const [demoPlan, setDemoPlan] = useState(null);
 
-  /* --- fallback данни, когато няма нищо в sessionStorage --- */
+  // fallback план, ако няма данни от sessionStorage
   const samplePlan = {
     day: "Понеделник",
     meals: [
@@ -30,11 +30,15 @@ export default function GuestSummary() {
     ],
   };
 
-useEffect(() => {
-  setDemoPlan(samplePlan); // временно игнорира sessionStorage
-}, []);
+  useEffect(() => {
+    const stored = sessionStorage.getItem("demoPlan");
+    if (stored) {
+      setDemoPlan(JSON.parse(stored)); // реален план от чатбота
+    } else {
+      setDemoPlan(samplePlan); // fallback пример
+    }
+  }, []);
 
-  /* ---------- статични ресурси ---------- */
   const motivationalQuotes = [
     "❝Вашето тяло може почти всичко – умът трябва да му го позволи.❞",
     "❝Не става по-лесно, ти ставаш по-силен!❞",
@@ -85,12 +89,10 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4 md:px-8 lg:px-20">
-      {/* Заглавие */}
       <h1 className="text-4xl md:text-5xl font-extrabold text-center text-orange-600 mb-10 flex items-center justify-center gap-3">
         🎯 <span>Персонализираният режим е готов!</span>
       </h1>
 
-      {/* Примерно меню */}
       {demoPlan && (
         <section className="max-w-4xl mx-auto mb-10 bg-white shadow-lg rounded-2xl p-8">
           <h2 className="text-2xl font-bold text-purple-700 mb-6 flex items-center gap-2">
@@ -121,7 +123,6 @@ useEffect(() => {
         </section>
       )}
 
-      {/* Мотивация */}
       <section className="max-w-3xl mx-auto mb-10">
         <h2 className="text-2xl font-bold text-teal-600 mb-4">
           🌟 Мотивация за деня
@@ -138,7 +139,6 @@ useEffect(() => {
         </ul>
       </section>
 
-      {/* Видео упражнения */}
       <section className="max-w-5xl mx-auto mb-10 bg-white shadow-lg rounded-2xl p-8">
         <h2 className="text-2xl font-bold text-green-600 mb-6">
           💪 Видео упражнения
@@ -156,7 +156,6 @@ useEffect(() => {
         </div>
       </section>
 
-      {/* Мотивационни видеа */}
       <section className="max-w-5xl mx-auto mb-10 bg-white shadow-lg rounded-2xl p-8">
         <h2 className="text-2xl font-bold text-blue-600 mb-6">
           🎥 Мотивационни видеа
@@ -174,7 +173,6 @@ useEffect(() => {
         </div>
       </section>
 
-      {/* Чести грешки */}
       <section className="max-w-5xl mx-auto mb-10 bg-white shadow-lg rounded-2xl p-8">
         <h2 className="text-2xl font-bold text-rose-600 mb-6">
           ⚠️ Чести грешки
@@ -203,7 +201,6 @@ useEffect(() => {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="max-w-3xl mx-auto bg-orange-100 text-center rounded-2xl shadow p-10">
         <h2 className="text-2xl font-bold text-orange-700 mb-4">
           📌 Готов ли си за още?
