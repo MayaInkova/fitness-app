@@ -1,21 +1,52 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { v4 as uuid } from "uuid";
-import { useNavigate } from "react-router-dom";
-import { Send } from "lucide-react";
-
 import { sendMessage } from "../services/chatbot";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 import chatbotIcon from "../images/chatbot.png";
-import userIcon    from "../images/user.png";
+import userIcon from "../images/user.png";
 
-/* ----- изображения за диетите ----- */
-import balancedImg   from "../images/balanced.png";
-import proteinImg    from "../images/protein.png";
-import ketoImg       from "../images/keto.png";
-import veganImg      from "../images/vegan.png";
+// diet images
+import balancedImg from "../images/balanced.png";
+import proteinImg from "../images/protein.png";
+import ketoImg from "../images/keto.png";
+import veganImg from "../images/vegan.png";
 import vegetarianImg from "../images/vegetarian.png";
-import paleoImg      from "../images/paleo.png";
+import paleoImg from "../images/paleo.png";
+
+import { Send } from "lucide-react";
+
+/****************************************************
+ * 🪄 Smart extractor -> turns plain questions into buttons
+ ****************************************************/
+function extractQuickReplies(html) {
+  // strip tags & normalise spaces
+  const txt = html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+  // generic pattern "a / b / c"
+  const direct = txt.match(/изберете[^:]*?:\s*([а-яa-z0-9 ,\/\-]+)/i);
+  const candidate = direct ? direct[1] : null;
+  const chunk = candidate || txt.match(/([а-яa-z0-9 ,]+\/[а-яa-z0-9 ,\/]+)/i)?.[1];
+  if (chunk) {
+    return chunk
+      .split("/")
+      .map((s) => s.replace(/[*_`]+/g, "").trim())
+      .filter(Boolean);
+  }
+
+  // explicit heuristics
+  if (txt.includes("тренировка") && txt.includes("минути")) return ["30", "40", "60"];
+  if (txt.includes("дни в седмицата")) return ["1", "2", "3", "4", "5", "6", "7"];
+  if (txt.includes("хранения") || txt.includes("хранене")) return ["2", "3", "4", "5", "6"];
+  if (txt.includes("алергии")) return ["не"];
+  if (txt.includes("млечни")) return ["да", "не"];
+  return [];
+}
 
 /* ----- HTML фрагмент – инфо за диети ----- */
 const DIET_INFO_HTML = `
@@ -81,22 +112,22 @@ export default function ChatbotPage() {
   ]);
 
   const [inputMessage, setInputMessage] = useState("");
-  const [isTyping,     setIsTyping]     = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [quickReplies, setQuickReplies] = useState(["да", "не"]);
 
   /* ---------- refs / hooks ---------- */
-  const chatRef  = useRef(null);
+  const chatRef = useRef(null);
   const navigate = useNavigate();
 
   /* ---------- helper: push message ---------- */
   const pushMessage = (msg) =>
-    setMessages(prev => [
+    setMessages((prev) => [
       ...prev,
       {
         id: prev.length + 1,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        ...msg
-      }
+        ...msg,
+      },
     ]);
 
   /* ---------- auto-scroll ---------- */
@@ -105,60 +136,56 @@ export default function ChatbotPage() {
   }, [messages]);
 
   /* ---------- обработка на отговор от бота ---------- */
-  const processBotResponse = useCallback((data) => {
-    setQuickReplies([]);
+  const processBotResponse = useCallback(
+    (data) => {
+      setQuickReplies([]);
 
-    switch (data?.type) {
-
-      case "detailed_diet_info": {
-        const html = `${DIET_INFO_HTML}<p class='mt-4'>${data.message}</p>`;
-        pushMessage({ text: html, sender: "bot" });
-        setQuickReplies(data.buttons?.map(b => b.value || b.text) || []);
-        break;
-      }
-
-      case "buttons":
-        pushMessage({ text: data.message, sender: "bot" });
-        setQuickReplies(data.buttons?.map(b => b.value || b.text) || []);
-        break;
-
-      case "text":
-        pushMessage({ text: data.message, sender: "bot" });
-        break;
-
-      case "plan": {
-        if (data.isGuest) {
-          /* --- гост режим --- */
-          sessionStorage.setItem("demoPlan", JSON.stringify(data.plan));
-          pushMessage({ text: "Готово! Пренасочвам към демо страницата…", sender: "bot" });
-          localStorage.removeItem("chatbotSessionId");
-          setTimeout(() => navigate("/guest-summary"), 1200);
-        } else if (user?.id) {
-          /* --- регистриран потребител --- */
-          sessionStorage.setItem("fullPlan", JSON.stringify(data.plan));
-          pushMessage({ text: "✅ Твоят персонализиран режим е готов! Пренасочвам…", sender: "bot" });
-          localStorage.removeItem("chatbotSessionId");
-          setTimeout(() => navigate("/plan"), 1200);
-        } else {
-          /* --- има план, но не е логнат --- */
-          pushMessage({ text: "🔒 Влез в профила си, за да видиш пълния план.", sender: "bot" });
-          setTimeout(() => navigate("/login"), 1500);
+      switch (data?.type) {
+        case "detailed_diet_info": {
+          const html = `${DIET_INFO_HTML}<p class='mt-4'>${data.message}</p>`;
+          pushMessage({ text: html, sender: "bot" });
+          setQuickReplies(data.buttons?.map((b) => b.value || b.text) || []);
+          break;
         }
-        break;
-      }
-
-      case "error":
-        pushMessage({ text: `⚠️ Грешка: ${data.message || "Неизвестна грешка."}`, sender: "bot" });
-        break;
-
-      default:
-        if (typeof data === "string") {
-          pushMessage({ text: data, sender: "bot" });
-        } else {
-          pushMessage({ text: "⚠️ Неочакван формат на отговора.", sender: "bot" });
+        case "buttons":
+          pushMessage({ text: data.message, sender: "bot" });
+          setQuickReplies(data.buttons?.map((b) => b.value || b.text) || []);
+          break;
+        case "text":
+          pushMessage({ text: data.message, sender: "bot" });
+          setQuickReplies(extractQuickReplies(data.message));
+          break;
+        case "plan": {
+          if (data.isGuest) {
+            sessionStorage.setItem("demoPlan", JSON.stringify(data.plan));
+            pushMessage({ text: "Готово! Пренасочвам към демо страницата…", sender: "bot" });
+            localStorage.removeItem("chatbotSessionId");
+            setTimeout(() => navigate("/guest-summary"), 1200);
+          } else if (user?.id) {
+            sessionStorage.setItem("fullPlan", JSON.stringify(data.plan));
+            pushMessage({ text: "✅ Твоят персонализиран режим е готов! Пренасочвам…", sender: "bot" });
+            localStorage.removeItem("chatbotSessionId");
+            setTimeout(() => navigate("/plan"), 1200);
+          } else {
+            pushMessage({ text: "🔒 Влез в профила си, за да видиш пълния план.", sender: "bot" });
+            setTimeout(() => navigate("/login"), 1500);
+          }
+          break;
         }
-    }
-  }, [navigate, user]);
+        case "error":
+          pushMessage({ text: `⚠️ Грешка: ${data.message || "Неизвестна грешка."}`, sender: "bot" });
+          break;
+        default:
+          if (typeof data === "string") {
+            pushMessage({ text: data, sender: "bot" });
+            setQuickReplies(extractQuickReplies(data));
+          } else {
+            pushMessage({ text: "⚠️ Неочакван формат на отговора.", sender: "bot" });
+          }
+      }
+    },
+    [navigate, user]
+  );
 
   /* ---------- изпращане на съобщение ---------- */
   const handleSendMessage = async (e, quick = null) => {
@@ -173,7 +200,7 @@ export default function ChatbotPage() {
 
     try {
       const role = user?.id ? "USER" : "GUEST";
-      const uid  = user?.id ?? null;
+      const uid = user?.id ?? null;
 
       const { data } = await sendMessage(sessionId, msg, role, uid);
       processBotResponse(data);
@@ -189,7 +216,6 @@ export default function ChatbotPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-3xl h-[85vh] flex flex-col rounded-3xl shadow-2xl border-[3px] border-gray-300 bg-white overflow-hidden">
-
         {/* header */}
         <div className="flex items-center gap-3 p-4 border-b bg-slate-50">
           <img src={chatbotIcon} alt="bot" className="h-8 w-8" />
@@ -197,7 +223,10 @@ export default function ChatbotPage() {
         </div>
 
         {/* messages */}
-        <div ref={chatRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-6 bg-gradient-to-b from-white via-gray-50 to-gray-100 scrollbar-thin scrollbar-thumb-gray-300">
+        <div
+          ref={chatRef}
+          className="flex-1 overflow-y-auto px-6 py-4 space-y-6 bg-gradient-to-b from-white via-gray-50 to-gray-100 scrollbar-thin scrollbar-thumb-gray-300"
+        >
           {messages.map(({ id, text, sender, timestamp }) => (
             <div key={id} className={`flex ${sender === "user" ? "justify-end" : "justify-start"}`}>
               <div className="flex items-end gap-3 max-w-[80%]">
@@ -256,7 +285,7 @@ export default function ChatbotPage() {
           <div className="flex items-center gap-3">
             <input
               value={inputMessage}
-              onChange={e => setInputMessage(e.target.value)}
+              onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Напиши съобщение…"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isTyping}
