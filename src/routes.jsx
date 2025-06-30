@@ -1,37 +1,43 @@
-import WelcomePage       from "./pages/WelcomePage";
-import UnlockAccess      from "./pages/UnlockAccess";
-import Register          from "./pages/Register";
-import Login             from "./pages/Login";
-import DashboardPage     from "./pages/DashboardPage";
-import GuestIntro        from "./pages/GuestIntro";
-import GuestSummary      from "./pages/GuestSummary";
-import ProfilePage       from "./pages/ProfilePage";
-import PlanTabs          from "./pages/PlanTabs";
-import PlanHistory       from "./pages/PlanHistory";
+import WelcomePage from "./pages/WelcomePage";
+import UnlockAccess from "./pages/UnlockAccess";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+import DashboardPage from "./pages/DashboardPage";
+import GuestIntro from "./pages/GuestIntro";
+import GuestSummary from "./pages/GuestSummary";
+import ProfilePage from "./pages/ProfilePage";
+import PlanTabs from "./pages/PlanTabs";
+import PlanHistory from "./pages/PlanHistory";
 import NutritionPlanPage from "./pages/NutritionPlanPage";
-import ModeratorPanel    from "./pages/ModeratorPanel";
-import ContentManagement from "./pages/ContentManagement";
-import ChatbotPage       from "./pages/ChatbotPage";
-import AdminPanel        from "./pages/AdminPanel";
+import ChatbotPage from "./pages/ChatbotPage";
+import AdminDashboard from './pages/AdminDashboard';
+import ModeratorDashboard from './pages/ModeratorDashboard';
 import ForgotPassword from "./components/ForgotPassword.jsx";
+import UnauthorizedPage from "./pages/UnauthorizedPage"; // <--- Добавяме и тази страница
 
+// Важно: Тук вече не е само "Component", а ще има и "isPrivate" и "allowedRoles"
 const routes = [
-  { path: "/",              Component: WelcomePage },
-  { path: "/unlock",        Component: UnlockAccess },
-  { path: "/register",      Component: Register },
-  { path: "/login",         Component: Login },
-  { path: "/dashboard",     Component: DashboardPage },
-  { path: "/guest",         Component: GuestIntro },
-  { path: "/guest-summary", Component: GuestSummary },   
-  { path: "/profile",       Component: ProfilePage },
-  { path: "/plan",          Component: PlanTabs },
-  { path: "/history",       Component: PlanHistory },
-  { path: "/nutrition",     Component: NutritionPlanPage },
-  { path: "/moderator",     Component: ModeratorPanel },
-  { path: "/content",       Component: ContentManagement },
-  { path: "/chatbot",       Component: ChatbotPage },
-  { path: "/admin",         Component: AdminPanel },
-  { path:"/forgot-password", Component: ForgotPassword },
+    // Публични рутове (достъпни за всички)
+    { path: "/", Component: WelcomePage, isPrivate: false },
+    { path: "/unlock", Component: UnlockAccess, isPrivate: false },
+    { path: "/register", Component: Register, isPrivate: false },
+    { path: "/login", Component: Login, isPrivate: false },
+    { path: "/guest", Component: GuestIntro, isPrivate: false },
+    { path: "/guest-summary", Component: GuestSummary, isPrivate: false },
+    { path: "/forgot-password", Component: ForgotPassword, isPrivate: false },
+    { path: "/unauthorized", Component: UnauthorizedPage, isPrivate: false }, // <--- Страница за отказан достъп
+
+    // Защитени рутове (изискват автентикация)
+    { path: "/dashboard", Component: DashboardPage, isPrivate: true, allowedRoles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_MODERATOR'] }, // Обикновени потребители, админи, модератори
+    { path: "/profile", Component: ProfilePage, isPrivate: true, allowedRoles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_MODERATOR'] },
+    { path: "/plan", Component: PlanTabs, isPrivate: true, allowedRoles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_MODERATOR'] },
+    { path: "/history", Component: PlanHistory, isPrivate: true, allowedRoles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_MODERATOR'] },
+    { path: "/nutrition", Component: NutritionPlanPage, isPrivate: true, allowedRoles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_MODERATOR'] },
+    { path: "/chatbot", Component: ChatbotPage, isPrivate: true, allowedRoles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_MODERATOR'] },
+
+    // Защитени рутове за специфични роли
+    { path: "/admin", Component: AdminDashboard, isPrivate: true, allowedRoles: ['ROLE_ADMIN'] },
+    { path: "/moderator", Component: ModeratorDashboard, isPrivate: true, allowedRoles: ['ROLE_MODERATOR', 'ROLE_ADMIN'] }, // Админът също може да е модератор
 ];
 
 export default routes;

@@ -1,4 +1,3 @@
-// src/context/AuthContext.js
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api'; // axios инстанция с baseURL = http://localhost:8080/api
 import { saveToken, clearToken, getToken } from '../utils/token';
@@ -34,7 +33,7 @@ export function AuthProvider({ children }) {
     // Запазваме допълнителни потребителски данни в localStorage
     localStorage.setItem('userId', data.id);
     localStorage.setItem('userEmail', data.email);
-    localStorage.setItem('userRoles', JSON.stringify(data.roles));
+    localStorage.setItem('userRoles', JSON.stringify(data.roles)); // Уверете се, че data.roles е наличен тук!
 
     setUser(data); // Обновява състоянието на потребителя
   };
@@ -62,8 +61,14 @@ export function AuthProvider({ children }) {
     return response.data; // Връщаме отговора от бекенда
   };
 
+  // 🌟 НОВА ФУНКЦИЯ ЗА ПРОВЕРКА НА РОЛЯ - Дефинирана е правилно!
+  const hasRole = (roleName) => {
+    return user && user.roles && user.roles.includes(roleName);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, forgotPassword }}>
+    // 💥 КОРЕКЦИЯ: Добавяме hasRole към value обекта, за да бъде достъпна през useAuth()
+    <AuthContext.Provider value={{ user, login, register, logout, forgotPassword, hasRole }}>
       {children}
     </AuthContext.Provider>
   );

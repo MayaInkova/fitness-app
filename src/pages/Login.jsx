@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext'; // Уверете се, че useAuth е импортиран
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import loginIcon from '../images/login.png';
@@ -11,7 +11,8 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth(); // 🔑 Извикваме login от контекста
+  // 🔑 Извикваме login и hasRole от контекста
+  const { login, hasRole } = useAuth(); // <--- ДОБАВЕНО hasRole
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -20,7 +21,20 @@ function Login() {
     try {
       await login(email, password); // 🤝 Логин функция от AuthContext
       toast.success('✅ Входът беше успешен!');
-      setTimeout(() => navigate('/chatbot'), 1200);
+
+      // 🌟 НОВА ЛОГИКА ЗА ПРЕНАСОЧВАНЕ СПОРЕД РОЛЯТА
+      // Използваме setTimeout, за да дадем време на toast съобщението да се покаже
+      setTimeout(() => {
+        if (hasRole('ROLE_ADMIN')) {
+          navigate('/admin'); // Пренасочи към администраторския панел
+        } else if (hasRole('ROLE_MODERATOR')) {
+          navigate('/moderator'); // Пренасочи към модераторския панел
+        } else {
+          navigate('/dashboard'); // Пренасочи към обикновения дашборд за редовни потребители
+        }
+      }, 1200); // Изчакваме 1.2 секунди
+      // 🌟 КРАЙ НА НОВАТА ЛОГИКА
+      
     } catch (error) {
       const msg =
         error.response?.data?.message ||
