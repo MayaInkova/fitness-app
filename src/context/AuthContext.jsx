@@ -1,5 +1,5 @@
 // src/context/AuthContext.js
-import { createContext, useContext, useState, useEffect, useMemo } from 'react'; // Added useMemo
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import api from '../services/api'; // axios инстанция с baseURL = http://localhost:8080/api
 import { saveToken, clearToken, getToken } from '../utils/token';
 
@@ -7,8 +7,6 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  // If context is null (e.g., component rendered outside provider),
-  // provide a default structure to prevent destructuring errors.
   if (!context) {
     console.error("useAuth must be used within an AuthProvider");
     return {
@@ -17,7 +15,7 @@ export const useAuth = () => {
       register: async () => {},
       logout: () => {},
       forgotPassword: async () => {},
-      hasRole: () => false, // Default hasRole always returns false
+      hasRole: () => false,
       guestLogin: async () => false,
     };
   }
@@ -65,7 +63,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('nutritionPlanId');
     }
     if (data.trainingPlanId !== undefined && data.trainingPlanId !== null) {
-      localStorage.setItem('trainingPlanId', data.trainingPlanId);
+      localStorage.removeItem('trainingPlanId');
     } else {
       localStorage.removeItem('trainingPlanId');
     }
@@ -98,17 +96,18 @@ export function AuthProvider({ children }) {
     saveUserData(data);
   };
 
+  // ВЪРНАТА ВЕРСИЯ: guestLogin очаква Map<String, String> отговор
   const guestLogin = async () => {
     try {
       clearAllUserData(); 
-      const { data } = await api.post('/auth/guest'); 
+      const { data } = await api.post('/auth/guest'); // <-- Върнат ендпойнт /auth/guest
       
       const transformedData = {
-        accessToken: data.token,
-        id: Number(data.userId),
-        email: `guest_${data.userId}@fitnessapp.com`,
-        roles: [data.role],
-        nutritionPlanId: null,
+        accessToken: data.token, // <-- Очаква data.token
+        id: Number(data.userId), // <-- Очаква data.userId
+        email: `guest_${data.userId}@fitnessapp.local`, // <-- Генерираме имейл, тъй като бекендът не го връща изрично за гост
+        roles: [data.role], // <-- Очаква data.role (string) и го прави масив
+        nutritionPlanId: null, 
         trainingPlanId: null,
       };
 
@@ -134,13 +133,12 @@ export function AuthProvider({ children }) {
     return response.data;
   };
 
-  // Use useMemo to memoize the context value, ensuring hasRole is stable
   const contextValue = useMemo(() => {
     const hasRole = (roleName) => {
       return user && user.roles && user.roles.includes(roleName);
     };
     return { user, login, register, logout, forgotPassword, hasRole, guestLogin };
-  }, [user, login, register, logout, forgotPassword, guestLogin]); // Dependencies for useMemo
+  }, [user, login, register, logout, forgotPassword, guestLogin]);
 
   return (
     <AuthContext.Provider value={contextValue}>

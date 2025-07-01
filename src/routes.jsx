@@ -3,7 +3,7 @@ import UnlockAccess from "./pages/UnlockAccess";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import DashboardPage from "./pages/DashboardPage";
-// import GuestIntro from "./pages/GuestIntro"; // Този импорт вече не е нужен
+import GuestIntro from "./pages/GuestIntro"; // Този импорт вече не е нужен
 import GuestSummary from "./pages/GuestSummary";
 import ProfilePage from "./pages/ProfilePage";
 import PlanTabs from "./pages/PlanTabs";
@@ -21,7 +21,7 @@ const routes = [
     { path: "/unlock", Component: UnlockAccess, isPrivate: false },
     { path: "/register", Component: Register, isPrivate: false },
     { path: "/login", Component: Login, isPrivate: false },
-    // { path: "/guest", Component: GuestIntro, isPrivate: false }, // Този рут вече не е нужен
+    { path: "/guest", Component: GuestIntro, isPrivate: false }, // Този рут вече не е нужен
     { path: "/guest-summary", Component: GuestSummary, isPrivate: false },
     { path: "/forgot-password", Component: ForgotPassword, isPrivate: false },
     { path: "/unauthorized", Component: UnauthorizedPage, isPrivate: false },

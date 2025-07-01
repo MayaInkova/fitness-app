@@ -53,11 +53,11 @@ const DIET_INFO_HTML = `
   <h3 class='font-bold text-lg mb-4'>Основни диетични подходи</h3>
   <div class='grid gap-4'>
     <div class='flex items-center gap-4'>
-      <img src="${balancedImg}"    alt="Баланс"       class='w-12 h-12 rounded-lg shadow' />
+      <img src="${balancedImg}"    alt="Баланс"      class='w-12 h-12 rounded-lg shadow' />
       <div><strong>🍏 Балансирана:</strong> Разнообразна храна с умерено съотношение на макронутриенти.</div>
     </div>
     <div class='flex items-center gap-4'>
-      <img src="${proteinImg}"     alt="Протеинова"   class='w-12 h-12 rounded-lg shadow' />
+      <img src="${proteinImg}"     alt="Протеинова"  class='w-12 h-12 rounded-lg shadow' />
       <div><strong>🥩 Протеинова:</strong> Високо съдържание на протеин. За мускулен растеж и ситост.</div>
     </div>
     <div class='flex items-center gap-4'>
@@ -81,7 +81,7 @@ const DIET_INFO_HTML = `
 
 export default function ChatbotPage() {
   /* ---------- 1. sessionId ---------- */
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
 
   const [sessionId, setSessionId] = useState(() => {
     const stored = localStorage.getItem("chatbotSessionId");
@@ -106,8 +106,8 @@ export default function ChatbotPage() {
       sender: "bot",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       text: `👋 Здравейте! Аз съм вашият личен асистент за фитнес и хранене. Готови ли сте да създадем вашия персонализиран план?
-             <br/><br/>${DIET_INFO_HTML}
-             <p class='mt-4'><strong>Искаш ли допълнителна информация за типа диети?</strong> <em>(отговори с "да" / "не")</em></p>`
+            <br/><br/>${DIET_INFO_HTML}
+            <p class='mt-4'><strong>Искаш ли допълнителна информация за типа диети?</strong> <em>(отговори с "да" / "не")</em></p>`
     }
   ]);
 
@@ -139,6 +139,13 @@ export default function ChatbotPage() {
   const processBotResponse = useCallback(
     (data) => {
       setQuickReplies([]);
+      console.log("Received bot response data:", data);
+      console.log("Current user object in ChatbotPage:", user);
+      console.log("User roles from user object:", user?.roles);
+      console.log("User has ROLE_GUEST:", hasRole('ROLE_GUEST'));
+      console.log("User has ROLE_USER:", hasRole('ROLE_USER'));
+      console.log("User has ROLE_ADMIN:", hasRole('ROLE_ADMIN'));
+
 
       switch (data?.type) {
         case "detailed_diet_info": {
@@ -156,19 +163,34 @@ export default function ChatbotPage() {
           setQuickReplies(extractQuickReplies(data.message));
           break;
         case "plan": {
-          if (data.isGuest) {
+          console.log("Plan received. User roles:", user?.roles);
+
+          if (hasRole('ROLE_ADMIN')) {
+            console.log("Redirecting ADMIN to /admin");
+            pushMessage({ text: "Готово! Пренасочвам към администраторския панел…", sender: "bot" });
+            localStorage.removeItem("chatbotSessionId");
+            setTimeout(() => navigate("/admin"), 1200);
+          }
+          else if (hasRole('ROLE_GUEST')) {
+            console.log("Redirecting GUEST to /guest-summary");
             sessionStorage.setItem("demoPlan", JSON.stringify(data.plan));
             pushMessage({ text: "Готово! Пренасочвам към демо страницата…", sender: "bot" });
             localStorage.removeItem("chatbotSessionId");
             setTimeout(() => navigate("/guest-summary"), 1200);
-          } else if (user?.id) {
+          }
+          else if (hasRole('ROLE_USER')) {
+            console.log("Redirecting USER to /plan");
             sessionStorage.setItem("fullPlan", JSON.stringify(data.plan));
             pushMessage({ text: "✅ Твоят персонализиран режим е готов! Пренасочвам…", sender: "bot" });
             localStorage.removeItem("chatbotSessionId");
             setTimeout(() => navigate("/plan"), 1200);
-          } else {
-            pushMessage({ text: "🔒 Влез в профила си, за да видиш пълния план.", sender: "bot" });
-            setTimeout(() => navigate("/login"), 1500);
+          }
+          else { // Този блок ще се изпълни, ако user е null (неавтентикиран) ИЛИ има роля, различна от изброените
+            console.log("User is not authenticated or has an unexpected role. Redirecting to /guest-summary.");
+            sessionStorage.setItem("demoPlan", JSON.stringify(data.plan)); // Запазваме плана и за неавтентикирани
+            pushMessage({ text: "Готово! Виж твоя примерен план. Регистрирай се за пълен достъп!", sender: "bot" });
+            localStorage.removeItem("chatbotSessionId");
+            setTimeout(() => navigate("/guest-summary"), 1500); // Пренасочване към /guest-summary
           }
           break;
         }
@@ -184,7 +206,7 @@ export default function ChatbotPage() {
           }
       }
     },
-    [navigate, user]
+    [navigate, user, hasRole]
   );
 
   /* ---------- изпращане на съобщение ---------- */
@@ -199,10 +221,8 @@ export default function ChatbotPage() {
     setIsTyping(true);
 
     try {
-      const role = user?.id ? "USER" : "GUEST";
-      const uid = user?.id ?? null;
-
-      const { data } = await sendMessage(sessionId, msg, role, uid);
+      console.log("Sending message to chatbot:", { sessionId, msg });
+      const { data } = await sendMessage(sessionId, msg);
       processBotResponse(data);
     } catch (err) {
       console.error("Грешка при изпращане:", err);
@@ -287,7 +307,7 @@ export default function ChatbotPage() {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Напиши съобщение…"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
               disabled={isTyping}
             />
             <button
