@@ -17,10 +17,10 @@ const DAY_BG = {
 };
 
 const MEAL_LABELS = {
-  BREAKFAST: { label: "Закуска", emoji: "🥞", time: "06-09" },
-  LUNCH:     { label: "Обяд",    emoji: "🍲", time: "12-14" },
-  DINNER:    { label: "Вечеря",  emoji: "🍛", time: "18-20" },
-  SNACK:     { label: "Снак",    emoji: "🥜", time: ""      },
+  BREAKFAST: { label: "Закуска", emoji: "🥞", time: "06:00 - 09:00" }, // Добавено време
+  LUNCH:     { label: "Обяд",     emoji: "🍲", time: "12:00 - 14:00" }, // Добавено време
+  DINNER:    { label: "Вечеря",   emoji: "🍛", time: "18:00 - 20:00" }, // Добавено време
+  SNACK:     { label: "Снак",     emoji: "🥜", time: "10:00 - 17:00" }, // Добавено примерно време за снакове
 };
 
 const BORDER_MAP = {
@@ -50,7 +50,7 @@ const API_PREFIX = "/nutrition-plans";
 /* ───────────────────────── Main component ───────────────────────── */
 
 export default function WeeklyNutritionPlan({ userId }) {
-  const [data, setData]       = useState(null);
+  const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
 

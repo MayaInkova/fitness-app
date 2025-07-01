@@ -1,8 +1,31 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // useNavigate вече е нужен
+import { useAuth } from '../context/AuthContext'; // useAuth вече е нужен
+import { toast } from 'react-toastify'; // toast вече е нужен
 import bgImage from "../images/hero-bg.jpg";
 
 export default function WelcomePage() {
+  const navigate = useNavigate(); // Възстановено
+  const { guestLogin } = useAuth(); // Възстановено
+
+  // handleGuestStart функцията е възстановена
+  const handleGuestStart = async () => {
+    try {
+      const success = await guestLogin(); // Извършваме guestLogin тук
+      if (success) {
+        toast.success('Добре дошли като гост!');
+        setTimeout(() => {
+          navigate("/guest"); // <-- Пренасочваме към GuestIntro страницата
+        }, 500); 
+      } else {
+        toast.error("Възникна проблем при стартиране като гост.");
+      }
+    } catch (err) {
+      console.error("Грешка при стартиране като гост:", err);
+      toast.error("Възникна неочаквана грешка при стартиране като гост.");
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-gray-100 flex flex-col justify-between">
       {/* ✦ Hero Section ✦ */}
@@ -147,11 +170,13 @@ export default function WelcomePage() {
               📝 Регистрация
             </button>
           </Link>
-          <Link to="/guest">
-            <button className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:-translate-y-1">
-              🚀 Пробвай като гост
-            </button>
-          </Link>
+          {/* КОРЕКЦИЯ: Бутонът "Пробвай като гост" вече извиква handleGuestStart директно */}
+          <button 
+            onClick={handleGuestStart} // <-- Извикваме handleGuestStart при клик
+            className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:-translate-y-1"
+          >
+            🚀 Пробвай като гост
+          </button>
         </div>
         <p className="mt-10 text-sm text-gray-600">
           Ние вярваме, че <strong>всеки заслужава да бъде във форма</strong>. Започни днес. Твоето по-добро "аз" те очаква! 🌟

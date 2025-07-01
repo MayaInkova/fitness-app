@@ -1,9 +1,28 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+// src/context/AuthContext.js
+import { createContext, useContext, useState, useEffect, useMemo } from 'react'; // Added useMemo
 import api from '../services/api'; // axios инстанция с baseURL = http://localhost:8080/api
 import { saveToken, clearToken, getToken } from '../utils/token';
 
 const AuthContext = createContext(null);
-export const useAuth = () => useContext(AuthContext);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  // If context is null (e.g., component rendered outside provider),
+  // provide a default structure to prevent destructuring errors.
+  if (!context) {
+    console.error("useAuth must be used within an AuthProvider");
+    return {
+      user: null,
+      login: async () => {},
+      register: async () => {},
+      logout: () => {},
+      forgotPassword: async () => {},
+      hasRole: () => false, // Default hasRole always returns false
+      guestLogin: async () => false,
+    };
+  }
+  return context;
+};
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -13,7 +32,13 @@ export function AuthProvider({ children }) {
     const token = getToken(); // getToken() чете от localStorage
     const storedUserId = localStorage.getItem('userId');
     const storedUserEmail = localStorage.getItem('userEmail');
-    const storedUserRoles = localStorage.getItem('userRoles');
+    let storedUserRoles = localStorage.getItem('userRoles'); 
+    const storedNutritionPlanId = localStorage.getItem('nutritionPlanId');
+    const storedTrainingPlanId = localStorage.getItem('trainingPlanId');
+
+    if (storedUserRoles === "undefined") {
+      storedUserRoles = null;
+    }
 
     if (token) {
       setUser({
@@ -21,21 +46,79 @@ export function AuthProvider({ children }) {
         id: storedUserId ? Number(storedUserId) : null,
         email: storedUserEmail,
         roles: storedUserRoles ? JSON.parse(storedUserRoles) : [],
+        nutritionPlanId: storedNutritionPlanId ? Number(storedNutritionPlanId) : null,
+        trainingPlanId: storedTrainingPlanId ? Number(storedTrainingPlanId) : null,
       });
     }
-  }, []); // Пуст масив за зависимости, за да се изпълни само веднъж при монтиране на компонента
+  }, []);
+
+  // Хелпер функция за запазване на данни в localStorage и setUser
+  const saveUserData = (data) => {
+    saveToken(data.accessToken);
+    localStorage.setItem('userId', data.id);
+    localStorage.setItem('userEmail', data.email);
+    localStorage.setItem('userRoles', JSON.stringify(data.roles));
+
+    if (data.nutritionPlanId !== undefined && data.nutritionPlanId !== null) {
+      localStorage.setItem('nutritionPlanId', data.nutritionPlanId);
+    } else {
+      localStorage.removeItem('nutritionPlanId');
+    }
+    if (data.trainingPlanId !== undefined && data.trainingPlanId !== null) {
+      localStorage.setItem('trainingPlanId', data.trainingPlanId);
+    } else {
+      localStorage.removeItem('trainingPlanId');
+    }
+
+    setUser({
+      accessToken: data.accessToken,
+      id: data.id,
+      email: data.email,
+      roles: data.roles,
+      nutritionPlanId: data.nutritionPlanId,
+      trainingPlanId: data.trainingPlanId
+    });
+  };
+
+  // Хелпер функция за изчистване на всички потребителски данни
+  const clearAllUserData = () => {
+    clearToken();
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userRoles');
+    localStorage.removeItem('nutritionPlanId');
+    localStorage.removeItem('trainingPlanId');
+    localStorage.removeItem('role'); 
+    localStorage.removeItem('token'); 
+    setUser(null);
+  };
 
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
+    saveUserData(data);
+  };
 
-    saveToken(data.accessToken); // Запазва токена в localStorage (utils/token.js)
+  const guestLogin = async () => {
+    try {
+      clearAllUserData(); 
+      const { data } = await api.post('/auth/guest'); 
+      
+      const transformedData = {
+        accessToken: data.token,
+        id: Number(data.userId),
+        email: `guest_${data.userId}@fitnessapp.com`,
+        roles: [data.role],
+        nutritionPlanId: null,
+        trainingPlanId: null,
+      };
 
-    // Запазваме допълнителни потребителски данни в localStorage
-    localStorage.setItem('userId', data.id);
-    localStorage.setItem('userEmail', data.email);
-    localStorage.setItem('userRoles', JSON.stringify(data.roles)); // Уверете се, че data.roles е наличен тук!
-
-    setUser(data); // Обновява състоянието на потребителя
+      saveUserData(transformedData);
+      return true;
+    } catch (error) {
+      console.error("AuthContext: Грешка при гост вход:", error.response ? error.response.data : error.message);
+      clearAllUserData();
+      return false;
+    }
   };
 
   const register = async (fullName, email, password) => {
@@ -43,32 +126,24 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    clearToken(); // Изчиства токена от localStorage (utils/token.js)
-
-    // Изчистваме и другите потребителски данни от localStorage
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userRoles');
-
-    setUser(null); // Изчиства състоянието на потребителя
+    clearAllUserData();
   };
 
-  // 🚨 НОВА ФУНКЦИЯ ЗА ЗАБРАВЕНА ПАРОЛА
   const forgotPassword = async (email) => {
-    // Изпращаме POST заявка към бекенда с имейла
-    // Очакваме бекенд ендпойнт от типа /api/auth/forgot-password
     const response = await api.post('/auth/forgot-password', { email });
-    return response.data; // Връщаме отговора от бекенда
+    return response.data;
   };
 
-  // 🌟 НОВА ФУНКЦИЯ ЗА ПРОВЕРКА НА РОЛЯ - Дефинирана е правилно!
-  const hasRole = (roleName) => {
-    return user && user.roles && user.roles.includes(roleName);
-  };
+  // Use useMemo to memoize the context value, ensuring hasRole is stable
+  const contextValue = useMemo(() => {
+    const hasRole = (roleName) => {
+      return user && user.roles && user.roles.includes(roleName);
+    };
+    return { user, login, register, logout, forgotPassword, hasRole, guestLogin };
+  }, [user, login, register, logout, forgotPassword, guestLogin]); // Dependencies for useMemo
 
   return (
-    // 💥 КОРЕКЦИЯ: Добавяме hasRole към value обекта, за да бъде достъпна през useAuth()
-    <AuthContext.Provider value={{ user, login, register, logout, forgotPassword, hasRole }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

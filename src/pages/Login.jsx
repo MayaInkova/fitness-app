@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Уверете се, че useAuth е импортиран
+import { useAuth } from '../context/AuthContext';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import loginIcon from '../images/login.png';
@@ -11,29 +11,40 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  // 🔑 Извикваме login и hasRole от контекста
-  const { login, hasRole } = useAuth(); // <--- ДОБАВЕНО hasRole
+  const { login } = useAuth(); 
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await login(email, password); // 🤝 Логин функция от AuthContext
+      await login(email, password); 
       toast.success('✅ Входът беше успешен!');
 
-      // 🌟 НОВА ЛОГИКА ЗА ПРЕНАСОЧВАНЕ СПОРЕД РОЛЯТА
-      // Използваме setTimeout, за да дадем време на toast съобщението да се покаже
+      const userRolesFromLocalStorage = JSON.parse(localStorage.getItem('userRoles') || '[]');
+      const storedNutritionPlanId = localStorage.getItem('nutritionPlanId'); 
+      const storedTrainingPlanId = localStorage.getItem('trainingPlanId');   
+
       setTimeout(() => {
-        if (hasRole('ROLE_ADMIN')) {
-          navigate('/admin'); // Пренасочи към администраторския панел
-        } else if (hasRole('ROLE_MODERATOR')) {
-          navigate('/moderator'); // Пренасочи към модераторския панел
+        // 💥 КОРИГИРАНА ЛОГИКА ЗА ПРЕНАСОЧВАНЕ
+        if (userRolesFromLocalStorage.includes('ROLE_ADMIN')) {
+          navigate('/admin'); // <-- АДМИН ОТИВА КЪМ АДМИН ПАНЕЛ
+        } else if (userRolesFromLocalStorage.includes('ROLE_MODERATOR')) {
+          navigate('/moderator');
+        } else if (userRolesFromLocalStorage.includes('ROLE_GUEST')) {
+          // Ако по някаква причина гост влезе през логин (което не би трябвало да е основен поток)
+          navigate('/chatbot'); 
+        } else if (userRolesFromLocalStorage.includes('ROLE_USER')) {
+            if (storedNutritionPlanId && storedTrainingPlanId) {
+                navigate('/dashboard');
+            } else {
+                navigate('/chatbot'); // Потребител без планове отива към чатбота
+            }
         } else {
-          navigate('/dashboard'); // Пренасочи към обикновения дашборд за редовни потребители
+            console.warn("LoginPage: Неизвестна роля или липсваща логика за пренасочване. Пренасочване към начална страница.");
+            navigate('/'); 
         }
-      }, 1200); // Изчакваме 1.2 секунди
-      // 🌟 КРАЙ НА НОВАТА ЛОГИКА
+      }, 1200); 
       
     } catch (error) {
       const msg =

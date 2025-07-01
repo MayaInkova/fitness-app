@@ -1,24 +1,43 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // Добавяме useEffect
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 function GuestIntro() {
   const navigate = useNavigate();
+  const { guestLogin, user } = useAuth(); // Взимаме и user от контекста
+
+  // Проверяваме дали потребителят вече е гост при зареждане на страницата
+  useEffect(() => {
+    // Ако user съществува и има роля "GUEST", значи вече е логнат като гост
+    if (user && user.roles && user.roles.includes('GUEST')) {
+      // Може да покажем съобщение, че вече е логнат като гост
+      // toast.info('Вече сте логнати като гост.');
+      // Пренасочваме бутона да води директно към чатбота
+      // Няма нужда от автоматично пренасочване тук, оставяме бутона да го направи
+    }
+  }, [user]); // Зависи от user обекта
 
   const startAsGuest = async () => {
-    try {
-      const res = await axios.post("http://localhost:8080/api/auth/guest");
-      const { token, userId, role } = res.data;
-
-      // Записване в localStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("userId", userId);
-      localStorage.setItem("role", role);
-
-      // Пренасочване към чатбот
+    // Ако вече е логнат като гост, просто пренасочваме към чатбота
+    if (user && user.roles && user.roles.includes('GUEST')) {
       navigate("/chatbot");
+      return;
+    }
+
+    // Иначе, извършваме guestLogin
+    try {
+      const success = await guestLogin(); 
+      if (success) {
+        toast.success('Добре дошли като гост!');
+        setTimeout(() => {
+          navigate("/chatbot"); // Пренасочва към чатбот
+        }, 500); 
+      } else {
+        toast.error("Възникна грешка при стартиране като гост.");
+      }
     } catch (err) {
-      alert("⚠️ Възникна грешка при стартиране като гост.");
+      toast.error("Възникна неочаквана грешка при стартиране като гост.");
       console.error(err);
     }
   };
@@ -44,7 +63,7 @@ function GuestIntro() {
           onClick={startAsGuest}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:-translate-y-1"
         >
-          🚀 Стартирай без регистрация
+          {user && user.roles && user.roles.includes('GUEST') ? 'Продължи към чатбота' : '🚀 Стартирай без регистрация'}
         </button>
 
         <div className="text-sm text-gray-600 text-center mt-6">
